@@ -12,6 +12,7 @@ from data_provider.uea import subsample, interpolate_missing, Normalizer
 from sktime.datasets import load_from_tsfile_to_dataframe
 import warnings
 from utils.augmentation import run_augmentation_single
+from utils.helper import crop_datetime
 
 warnings.filterwarnings('ignore')
 
@@ -581,6 +582,70 @@ class SWATSegLoader(Dataset):
         self.test = test_data
         data_len = len(self.train)
         self.val = self.train[(int)(data_len * 0.8):]
+        self.test_labels = labels
+        print("test:", self.test.shape)
+        print("train:", self.train.shape)
+
+    def __len__(self):
+        """
+        Number of images in the object dataset.
+        """
+        if self.flag == "train":
+            return (self.train.shape[0] - self.win_size) // self.step + 1
+        elif (self.flag == 'val'):
+            return (self.val.shape[0] - self.win_size) // self.step + 1
+        elif (self.flag == 'test'):
+            return (self.test.shape[0] - self.win_size) // self.step + 1
+        else:
+            return (self.test.shape[0] - self.win_size) // self.win_size + 1
+
+    def __getitem__(self, index):
+        index = index * self.step
+        if self.flag == "train":
+            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+        elif (self.flag == 'val'):
+            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+        elif (self.flag == 'test'):
+            return np.float32(self.test[index:index + self.win_size]), np.float32(
+                self.test_labels[index:index + self.win_size])
+        else:
+            return np.float32(self.test[
+                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
+                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+
+
+class ESA_ADSegLoader(Dataset):
+    def __init__(self, args, root_path, win_size, channel_name="channel_41", step=1, flag="train"):
+        self.flag = flag
+        self.step = step
+        self.win_size = win_size
+        self.scaler = StandardScaler()
+
+        df = pd.read_csv(os.path.join(root_path, f'{channel_name}.csv'))
+
+        channel_columns = [col for col in df.columns if col.startswith('channel')]
+
+        train_start_datetime = pd.Timestamp("2000-01-01T00:00:00.000Z")
+        train_end_datetime = pd.Timestamp("2000-06-01T00:00:00.000Z")
+
+        val_end_datetime = train_end_datetime + pd.DateOffset(months=4)
+
+        test_start_datetime = pd.Timestamp("2010-01-01T00:00:00.000Z")
+        test_end_datetime = pd.Timestamp("2011-01-01T00:00:00.000Z")
+
+        train_data = crop_datetime(df, train_start_datetime, train_end_datetime)
+        test_data = crop_datetime(df, test_start_datetime, test_end_datetime)
+        labels = test_data.values[:, -1]
+        train_data = train_data.values[:, 1].reshape(-1, 1)
+        test_data = test_data.values[:, 1].reshape(-1, 1)
+
+        self.scaler.fit(train_data)
+        train_data = self.scaler.transform(train_data)
+        test_data = self.scaler.transform(test_data)
+        self.train = train_data
+        self.test = test_data
+        data_len = len(self.train)
+        self.val = crop_datetime(df, train_end_datetime, val_end_datetime).values[:, 1]
         self.test_labels = labels
         print("test:", self.test.shape)
         print("train:", self.train.shape)
