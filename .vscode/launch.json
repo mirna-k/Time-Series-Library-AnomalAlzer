@@ -8,7 +8,7 @@
             "name": "Train TimesNet-Anomaly Detection",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}/run.py",
+            "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
             "args": [
                 "--task_name", "anomaly_detection",
@@ -27,7 +27,7 @@
                 "--enc_in", "1",
                 "--c_out", "1",
                 "--top_k", "3",
-                "--batch_size", "128",
+                "--batch_size", "1",
                 "--train_epochs", "10",
                 "--anomaly_ratio", "0.01",
                 "--use_gpu", "False",

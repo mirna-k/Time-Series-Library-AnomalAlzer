@@ -628,10 +628,10 @@ class ESA_ADSegLoader(Dataset):
         train_start_datetime = pd.Timestamp("2000-01-01T00:00:00.000Z")
         train_end_datetime = pd.Timestamp("2000-06-01T00:00:00.000Z")
 
-        val_end_datetime = train_end_datetime + pd.DateOffset(months=4)
+        val_end_datetime = train_end_datetime + pd.DateOffset(months=2)
 
         test_start_datetime = pd.Timestamp("2010-01-01T00:00:00.000Z")
-        test_end_datetime = pd.Timestamp("2011-01-01T00:00:00.000Z")
+        test_end_datetime = pd.Timestamp("2010-07-01T00:00:00.000Z")
 
         train_data = crop_datetime(df, train_start_datetime, train_end_datetime)
         test_data = crop_datetime(df, test_start_datetime, test_end_datetime)
@@ -645,7 +645,7 @@ class ESA_ADSegLoader(Dataset):
         self.train = train_data
         self.test = test_data
         data_len = len(self.train)
-        self.val = crop_datetime(df, train_end_datetime, val_end_datetime).values[:, 1]
+        self.val = crop_datetime(df, train_end_datetime, val_end_datetime).values[:, 1].reshape(-1, 1)
         self.test_labels = labels
         print("test:", self.test.shape)
         print("train:", self.train.shape)
