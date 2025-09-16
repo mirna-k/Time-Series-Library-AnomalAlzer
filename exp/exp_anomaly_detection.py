@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, adjustment
-from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import auc, classification_report, mean_absolute_error, mean_squared_error, precision_recall_curve, precision_recall_fscore_support, roc_curve
 from sklearn.metrics import accuracy_score
 import torch.multiprocessing
 
@@ -11,8 +11,12 @@ import torch.nn as nn
 from torch import optim
 import os
 import time
+import math
 import warnings
 import numpy as np
+import plotly.graph_objects as go
+
+HTML_RESULTS_PATH = 'DRIVE/MyDrive/ESA-AD_data/HTML_results_TimesNet/'
 
 warnings.filterwarnings('ignore')
 
@@ -195,8 +199,10 @@ class Exp_Anomaly_Detection(Exp_Basic):
         print("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
             accuracy, precision,
             recall, f_score))
+        
+        print(classification_report(gt, pred, digits=4))
 
-        f = open("result_anomaly_detection.txt", 'a')
+        f = open("result_anomaly_detection_TimesNet.txt", 'a')
         f.write(setting + "  \n")
         f.write("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
             accuracy, precision,
@@ -204,4 +210,93 @@ class Exp_Anomaly_Detection(Exp_Basic):
         f.write('\n')
         f.write('\n')
         f.close()
+        
+        self.plot_detection_results(test_data.data_x, pred, gt)
+    
+        mse = mean_squared_error(gt, pred)
+        mae = mean_absolute_error(gt, pred)
+        rmse = math.sqrt(mse)
+        print(f"MSE: {mse:.4f}")
+        print(f"MAE: {mae:.4f}")
+        print(f"RMSE: {rmse:.4f}")
+
+        # Compute ROC curve and ROC area
+        fpr, tpr, _ = roc_curve(gt, test_energy)
+        roc_auc = auc(fpr, tpr)
+
+        # Plot ROC curve
+        fig_roc = go.Figure()
+        fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.4f})'))
+        fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Random', line=dict(dash='dash')))
+        fig_roc.update_layout(
+            title='Receiver Operating Characteristic (ROC)',
+            xaxis_title='False Positive Rate',
+            yaxis_title='True Positive Rate',
+            showlegend=True
+        )
+        fig_roc.show()
+        fig_roc.write_html(f"{HTML_RESULTS_PATH}TimesNet_ROC_curve.html")
+
+        # Compute Precision-Recall curve and area
+        precision_curve, recall_curve, _ = precision_recall_curve(gt, test_energy)
+        pr_auc = auc(recall_curve, precision_curve)
+
+        # Plot Precision-Recall curve
+        fig_pr = go.Figure()
+        fig_pr.add_trace(go.Scatter(x=recall_curve, y=precision_curve, mode='lines', name=f'PR curve (AUC = {pr_auc:.4f})'))
+        fig_pr.update_layout(
+            title='Precision-Recall Curve',
+            xaxis_title='Recall',
+            yaxis_title='Precision',
+            showlegend=True
+        )
+        fig_pr.show()
+        fig_pr.write_html(f"{HTML_RESULTS_PATH}TimesNet_PR_curve.html")
+
         return
+    
+    def plot_detection_results(data, pred, gt):
+        fig = go.Figure()
+
+        # Signal
+        fig.add_trace(go.Scatter(
+            y=data,
+            mode='lines',
+            name=f'Signal'
+        ))
+
+        # Ground truth anomalies (green)
+        fig.add_trace(go.Scatter(
+            y=np.where(gt == 1, data.max(), np.nan),
+            mode='markers',
+            name='True Anomaly',
+            marker=dict(color='green', size=7),
+        ))
+
+        # Detected false anomalies (orange)
+        fig.add_trace(go.Scatter(
+            y=np.where((pred == 1) & (gt == 0), data.max(), np.nan),
+            mode='markers',
+            name='False Positive',
+            marker=dict(color='orange', size=7),
+        ))
+
+        # Detected anomalies (red)
+        fig.add_trace(go.Scatter(
+            y=np.where((pred == 1) & (gt == 1), data.max(), np.nan),
+            mode='markers',
+            name='Detected Anomaly',
+            marker=dict(color='red', size=7),
+        ))
+
+        # Layout with axes starting at 0
+        fig.update_layout(
+            title='Anomaly Detection Results',
+            xaxis_title='Time Step',
+            yaxis_title='Signal Value',
+            legend=dict(x=0, y=1.1, orientation="h"),
+            xaxis=dict(range=[0, None]),
+            yaxis=dict(range=[0, None])
+        )
+        fig.show()
+        fig.write_html(f"TimesNet_anomaly_detection_result_.html")
