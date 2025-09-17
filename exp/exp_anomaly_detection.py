@@ -16,8 +16,6 @@ import warnings
 import numpy as np
 import plotly.graph_objects as go
 
-HTML_RESULTS_PATH = 'DRIVE/MyDrive/ESA-AD_data/HTML_results_TimesNet/'
-
 warnings.filterwarnings('ignore')
 
 
@@ -177,6 +175,31 @@ class Exp_Anomaly_Detection(Exp_Basic):
         threshold = np.percentile(combined_energy, 100 - self.args.anomaly_ratio)
         print("Threshold :", threshold)
 
+        fig = go.Figure()
+        # Plot test_energy
+        fig.add_trace(go.Scatter(
+            y=test_energy,
+            mode="lines",
+            name="Test Energy"
+        ))
+
+        # Add threshold line
+        fig.add_trace(go.Scatter(
+            y=[threshold] * len(test_energy),
+            mode="lines",
+            line=dict(color="red", dash="dash"),
+            name=f"Threshold = {threshold:.4f}"
+        ))
+
+        fig.update_layout(
+            title="Test Energy vs Threshold",
+            xaxis_title="Index",
+            yaxis_title="Energy",
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        )
+        fig.write_html(f"TimesNet_test_energy_&_threshold_2000.html")
+        fig.show()
+
         # (3) evaluation on the test set
         pred = (test_energy > threshold).astype(int)
         test_labels = np.concatenate(test_labels, axis=0).reshape(-1)
@@ -235,7 +258,7 @@ class Exp_Anomaly_Detection(Exp_Basic):
             showlegend=True
         )
         fig_roc.show()
-        fig_roc.write_html(f"{HTML_RESULTS_PATH}TimesNet_ROC_curve.html")
+        fig_roc.write_html(f"grafovi/TimesNet_ROC_curve.html")
 
         # Compute Precision-Recall curve and area
         precision_curve, recall_curve, _ = precision_recall_curve(gt, test_energy)
@@ -251,7 +274,7 @@ class Exp_Anomaly_Detection(Exp_Basic):
             showlegend=True
         )
         fig_pr.show()
-        fig_pr.write_html(f"{HTML_RESULTS_PATH}TimesNet_PR_curve.html")
+        fig_pr.write_html(f"grafovi/TimesNet_PR_curve.html")
 
         return
     
@@ -296,7 +319,6 @@ class Exp_Anomaly_Detection(Exp_Basic):
             yaxis_title='Signal Value',
             legend=dict(x=0, y=1.1, orientation="h"),
             xaxis=dict(range=[0, None]),
-            yaxis=dict(range=[0, None])
         )
         fig.show()
-        fig.write_html(f"TimesNet_anomaly_detection_result_.html")
+        fig.write_html(f"grafovi/TimesNet_anomaly_detection_result_2000.html")

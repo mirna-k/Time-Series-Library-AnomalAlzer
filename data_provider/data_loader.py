@@ -630,8 +630,8 @@ class ESA_ADSegLoader(Dataset):
 
         val_end_datetime = train_end_datetime + pd.DateOffset(months=2)
 
-        test_start_datetime = pd.Timestamp("2011-01-01T00:00:00.000Z")
-        test_end_datetime = pd.Timestamp("2012-07-01T00:00:00.000Z")
+        test_start_datetime = pd.Timestamp("2000-01-01T00:00:00.000Z")
+        test_end_datetime = pd.Timestamp("2001-01-01T00:00:00.000Z")
 
         train_data = crop_datetime(df, train_start_datetime, train_end_datetime)
         test_data = crop_datetime(df, test_start_datetime, test_end_datetime)
